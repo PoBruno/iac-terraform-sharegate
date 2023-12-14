@@ -1,0 +1,27 @@
+# Arquivos de configuração específicos do sistema operacional
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Arquivos de configuração
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+
+# Arquivos de log
+*.log
+
+# Arquivos de chave privada
+*.pem
+*.ppk
+
+# Arquivos de registro do VSCode
+.vscode/
+
+# Arquivos de configuração do editor
+*.swp
+*.swo
+
+# Arquivos de cache e diretórios
+.cache/
+.terraform/

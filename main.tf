@@ -2,19 +2,17 @@
 
 # Configure the Azure Provider
 provider "azurerm" {
-  # whilst the `version` attribute is optional, we recommend pinning to a given version of the Provider
-  subscription_id = "9fcc9c96–8044–XXXX-XXXX–XXXXXXXXXXXX"
-  client_id       = "97545937–XXXX–XXXX-XXXX-XXXXXXXXXXXX"
-  client_secret   = ".3GGR_XXXXX~XXXX-XXXXXXXXXXXXXXXX"
-  tenant_id       = "73d20f0d-XXXX–XXXX–XXXX-XXXXXXXXXXXX"
-  version         = "=2.0.0"
   features {}
+  subscription_id = var.subscription_id
 }
+
+
 
 # Create a resource group
 resource "azurerm_resource_group" "example_rg" {
   name     = "${var.resource_prefix}-rg"
   location = var.node_location
+  tags = var.tags
 }
 
 # Create a virtual network within the resource group
@@ -23,6 +21,7 @@ resource "azurerm_virtual_network" "example_vnet" {
   resource_group_name = azurerm_resource_group.example_rg.name
   location            = var.node_location
   address_space       = var.node_address_space
+  tags = var.tags
 }
 
 # Create a subnets within the virtual network
@@ -31,7 +30,7 @@ resource "azurerm_subnet" "example_subnet" {
   resource_group_name  = azurerm_resource_group.example_rg.name
   virtual_network_name = azurerm_virtual_network.example_vnet.name
   address_prefixes     = [var.node_address_prefix]
-    }
+  }
 
 # Create Linux Public IP
 resource "azurerm_public_ip" "example_public_ip" {
@@ -41,10 +40,7 @@ resource "azurerm_public_ip" "example_public_ip" {
   location            = azurerm_resource_group.example_rg.location
   resource_group_name = azurerm_resource_group.example_rg.name
   allocation_method   = var.Environment == "Test" ? "Static" : "Dynamic"
-
-  tags = {
-    environment = "sharegate"
-  }
+  tags = var.tags
 }
 
 # Create Network Interface
@@ -54,7 +50,7 @@ resource "azurerm_network_interface" "example_nic" {
   name                = "${var.resource_prefix}-${format("%02d", count.index)}-nic"
   location            = azurerm_resource_group.example_rg.location
   resource_group_name = azurerm_resource_group.example_rg.name
-  #
+  tags = var.tags
 
   ip_configuration {
     name                          = "internal"
@@ -86,23 +82,19 @@ resource "azurerm_network_security_group" "example_nsg" {
     destination_address_prefix = "*"
 
   }
-  tags = {
-    environment = "sharegate"
-  }
+  tags = var.tags
 }
 
 # Subnet and NSG association
 resource "azurerm_subnet_network_security_group_association" "example_subnet_nsg_association" {
   subnet_id                 = azurerm_subnet.example_subnet.id
   network_security_group_id = azurerm_network_security_group.example_nsg.id
-
 }
 
 # Virtual Machine Creation — Windows Server
 resource "azurerm_virtual_machine" "Windows" {
     count = var.node_count
     name  = "${var.resource_prefix}-${format("%02d", count.index)}"
-    #name = "${var.resource_prefix}-VM"
     location                      = azurerm_resource_group.example_rg.location
     resource_group_name           = azurerm_resource_group.example_rg.name
     network_interface_ids         = [element(azurerm_network_interface.example_nic.*.id, count.index)]
@@ -110,11 +102,13 @@ resource "azurerm_virtual_machine" "Windows" {
     delete_os_disk_on_termination = true
     
     storage_image_reference {
-        publisher = "MicrosoftWindowsServer"
-        offer     = "WindowsServer"
-        sku       = "2016-Datacenter"
-        version   = "latest"
+        publisher = var.windows_image_reference["publisher"]
+        offer     = var.windows_image_reference["offer"]
+        sku       = var.windows_image_reference["sku"]
+        version   = var.windows_image_reference["version"]
     }
+
+
     storage_os_disk {
         name              = "${var.resource_prefix}-disk-${format("%02d", count.index)}"
         caching           = "ReadWrite"
@@ -130,52 +124,128 @@ resource "azurerm_virtual_machine" "Windows" {
         provision_vm_agent = true
     }
     
-    tags = {
-        environment = "sharegate"
-    }
+    tags = var.tags
   
 }
 
-# Virtual Machine Creation — Linux
-resource "azurerm_virtual_machine" "example_linux_vm" {
-  count = var.node_count
-  name  = "${var.resource_prefix}-${format("%02d", count.index)}"
-  #name = "${var.resource_prefix}-VM"
-  location                      = azurerm_resource_group.example_rg.location
-  resource_group_name           = azurerm_resource_group.example_rg.name
-  network_interface_ids         = [element(azurerm_network_interface.example_nic.*.id, count.index)]
-  vm_size                       = "Standard_A1_v2"
-  delete_os_disk_on_termination = true
+# Create a Virtual Machine Extension to install .msi file
+resource "azurerm_virtual_machine_extension" "install_msi" {
+  count                 = var.node_count
+  name                  = "${var.resource_prefix}-${format("%02d", count.index)}-extension"
+  virtual_machine_id    = azurerm_virtual_machine.Windows[count.index].id
+  publisher             = "Microsoft.Compute"
+  type                  = "CustomScriptExtension"
+  type_handler_version  = "1.10"
 
-  storage_image_reference {
-    publisher = "OpenLogic"
-    offer     = "CentOS"
-    sku       = "7.5"
-    version   = "latest"
-  }
-  storage_os_disk {
-    name              = "myosdisk-${count.index}"
-    caching           = "ReadWrite"
-    create_option     = "FromImage"
-    managed_disk_type = "Standard_LRS"
-  }
-  os_profile {
-    computer_name  = "linuxhost"
-    admin_username = "terminator"
-    admin_password = "Password@1234"
-  }
-  os_profile_linux_config {
-    disable_password_authentication = false
-  }
+  settings = <<SETTINGS
+    {
+        "fileUris": ["https://github.com/pobruno/iac-terraform-sharegate/blob/main/sharegate/Sharegate.Extension.2.2.0.msi"],
+        "commandToExecute": "msiexec /i Sharegate.Extension.2.2.0.msi /quiet /qn /norestart"
+    }
+SETTINGS
+}
 
-  tags = {
-    environment = "sharegate"
-  }
+
+# Output
+output "vm_rg" {
+  value = azurerm_virtual_machine.Windows.resource_group_name
+  description = "VM Resource Group"
+}
+output "vm_location" {
+  value = azurerm_virtual_machine.Windows.location
+  description = "VM Location"
+}
+output "vm_name" {
+  value = azurerm_virtual_machine.Windows.name
+  description = "VM name"
+}
+output "vm_ip" {
+  value = azurerm_public_ip.example_public_ip.*.ip_address
+  description = "VM IP"
+}
+output "vm_username" {
+  value = azurerm_virtual_machine.Windows.os_profile_windows_config[0].admin_username
+  description = "Username"
+}
+output "vm_password" {
+  value = azurerm_virtual_machine.Windows.os_profile_windows_config[0].admin_password
+  description = "Password"
+}
+output "vm_size" {
+  value = azurerm_virtual_machine.Windows.vm_size
+  description = "VM Size"
 }
 
 
 
+# Path: variables.tf
+# Compare this snippet from variables.tf:
+# variable "node_location" {
+# type = string
+# }
+#
+# variable "resource_prefix" {
+# type = string
+# }
+#
+# variable "node_address_space" {
+# default = ["
+#
+# variable "node_address_prefix" {
+# default = "
+#
+# variable "Environment" {
+# type = string
+# }
+#
+# variable "node_count" {
+# type = number
+# }
+#
+# variable "admin_username" {
+# type = string
+# }
+#
+# variable "admin_password" {
+# type = string
+# }
+#
+# variable "vm_size" {
+# type = string
+# }
+#
+# variable "subscription_id" {
+# type = string
+# }
 
+
+# Path: terraform.tfvars
+# Compare this snippet from terraform.tfvars:
+# node_location = "eastus"
+# resource_prefix = "sharegate"
+# node_address_space = ["
+# node_address_prefix = "
+# Environment = "Test"
+# node_count = 1
+# admin_username = "sharegate"
+# admin_password = "Password123"
+# vm_size = "Standard_DS1_v2"
+# subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+
+# Path: terraform.tfvars
+# Compare this snippet from terraform.tfvars:
+# node_location = "eastus"
+# resource_prefix = "sharegate"
+# node_address_space = ["
+# node_address_prefix = "
+
+# Environment = "Test"
+# node_count = 1
+# admin_username = "sharegate"
+# admin_password = "Password123"
+# vm_size = "Standard_DS1_v2"
+# subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 
 
