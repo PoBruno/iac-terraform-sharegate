@@ -1,29 +1,32 @@
 
-# IaC - Terraform - Azure - Sharegate Server
 
-## Description
-This module creates a Virtual Machine in Azure to be used as a Sharegate server.
-Automatically creates a Virtual Machine, a Network Interface, a Public IP, a Network Security Group and a Virtual Network.
-Automatically installs Sharegate on the Virtual Machine.
+# IaC - Terraform - Azure - Servidor Sharegate
+Bruno Gomes - [GitHub](https://www.github.com/pobruno) - [LinkedIn](https://www.linkedin.com/in/brunopoleza/) - [Microsoft](https://learn.microsoft.com/en-us/users/brunopoleza/)
 
-Set how many nodes you want to create and the size of the Virtual Machine.
+---
 
-## Requirements
+### Descrição 
 
-| Name | Version |
-|------|---------|
-| terraform | >= 0.12.0 |
-| azurerm | >= 2.0.0 |
+Este módulo cria uma Máquina Virtual no Azure para ser usada como servidor Sharegate.Ele provisiona automaticamente uma Máquina Virtual, uma Interface de Rede, um IP Público, um Grupo de Segurança de Rede e uma Rede Virtual. Além disso, instala o Sharegate na Máquina Virtual.
 
-# Sample Usage
+Defina quantos nós deseja criar e o tamanho da Máquina Virtual.  
 
-## Environment Variables
+### Requisitos  
 
-File terraform.tfvars contains the following environment variables:
-    
-```hcl
-# Path: terraform.tfvars
-# Compare this snippet from terraform.tfvars:
+| Nome | Versão |
+|------|---------| 
+| terraform | >= 0.12.0 | 
+| azurerm | >= 2.0.0 |  
+
+# Tutorial 
+
+## Variáveis de Ambiente  
+
+O arquivo `terraform.tfvars` contém as seguintes variáveis de ambiente:<br>
+- Defina as variáveis de ambiente com os valores corretos.     
+
+```hcl # Caminho: terraform.tfvars 
+# Compare este trecho de terraform.tfvars: 
 subscription_id = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
 node_location   = "Brazil South"
 resource_prefix = "srv-sharegate"
@@ -32,207 +35,193 @@ node_count      = 2
 admin_username  = "XXXXXX"
 admin_password  = "XXXXXX"
 vm_size         = "Standard_D4s_v3" 
+
+tags = {
+  project     = "MigrationProject"
+  access      = "terraform"
+  environment = "development"
+  application = "sharegate"
+}
+
+windows_image_reference = {
+  publisher = "MicrosoftWindowsServer"
+  offer     = "WindowsServer"
+  sku       = "2019-Datacenter"
+  version   = "latest"
+}
+
 ```
 
-Set the evnironment variables with correct values
+
+## Login no Azure
+
+- Login no Azure usando o Azure CLI
+- Defina o ID da assinatura a ser utilizado
 
 
-## Azure Login
-
-- Azure login using the Azure CLI
-- Set the subscription ID to use
-    
-```bash
-az login
-az account set --subscription="SUBSCRIPTION_ID"
-az account show
+```Shell
+az login az account set --subscription="SUBSCRIPTION_ID" az account show
 ```
 
 ## Terraform
 
 #### Terraform Init
 
-- The following command will initialize the Terraform working directory by downloading and installing any Terraform modules needed for this configuration.
+- O comando a seguir inicializará o diretório de trabalho do Terraform, baixando e instalando quaisquer módulos do Terraform necessários para esta configuração.
 
-```bash
+```Shell
 terraform init
 ```
 
 #### Terraform Plan
 
-- The following command will create an execution plan.
-- The execution plan shows what actions Terraform will take to create the resources defined in the configuration files.
+- O comando a seguir criará um plano de execução.
+- O plano de execução mostra quais ações o Terraform realizará para criar os recursos definidos nos arquivos de configuração.
 
-```bash
+```Shell
 terraform plan
 ```
 
 #### Terraform Apply
 
-- The following command will apply the changes required to reach the desired state of the configuration.
-- This command will execute the actions proposed in a Terraform plan.
+- O comando a seguir aplicará as alterações necessárias para alcançar o estado desejado da configuração.
+- Este comando executará as ações propostas em um plano do Terraform.
 
-```bash
-terraform apply
-```
-Note: The -auto-approve flag will skip interactive approval of plan before applying.
+**Observação:** _A flag `-auto-approve` ignorará a aprovação interativa do plano antes da aplicação._
 
-```bash
+```Shell
 terraform apply -auto-approve
 ```
 
-#### Terraform Apply - Auto Approve - Input Variables
+#### Terraform Apply - Auto Approve - Variáveis de Entrada
 
-- The following command will apply the changes required to reach the desired state of the configuration.
+- O comando a seguir aplicará as alterações necessárias para alcançar o estado desejado da configuração.
 
-```bash
-terraform apply -auto-approve `
-    -var="admin_username=XXXXXX" `
-    -var="admin_password=XXXXXX" `
-    -var="vm_size=Standard_D4s_v3" `
-    -var="node_count=2" `
-    -var="node_location=Brazil South" `
-    -var="resource_prefix=srv-sharegate" `
-    -var="Environment=Development"
-        
+
+```Shell
+terraform apply -auto-approve `    
+-var="admin_username=XXXXXX" `    
+-var="admin_password=XXXXXX" `     
+-var="vm_size=Standard_D4s_v3" `     
+-var="node_count=2" `     
+-var="node_location=Brazil South" `     
+-var="resource_prefix=srv-sharegate" `     
+-var="Environment=Development"``
+-var="subscription_id=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+-var="tags={project="MigrationProject",access="terraform",environment="development",application="sharegate"}" `
+-var="windows_image_reference={publisher="MicrosoftWindowsServer",offer="WindowsServer",sku="2019-Datacenter",version="latest"}"
 ```
 
 #### Terraform Destroy
 
-- This command will destroy all resources created by this configuration.
-- This command will not destroy resources created outside of Terraform.
+- Este comando destruirá todos os recursos criados por esta configuração.
+- Este comando não destruirá recursos criados fora do Terraform.
 
-```bash
+```Shell
 terraform destroy -auto-approve
 ```
 
-## Output
 
-```bash
-Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
+## Conexão SSH
 
-Outputs:
-
-admin_password = XXXXXXXX
-admin_username = XXXXXXXX
-node_address   = [
-]
-node_name      = [
-  "srv-sharegate-01",
-  "srv-sharegate-02",
-]
-node_private_ip = [
-    "XX.XX.XX.XX",
-    "XX.XX.XX.XX",
-]
-node_public_ip = [
-    "XX.XX.XX.XX",
-    "XX.XX.XX.XX",
-    ]
-
-node_size      = [
-  "Standard_D4s_v3",
-  "Standard_D4s_v3",
-]
-node_subnet_id = [
-  "/subscriptions/XXXXXXXX-/virtualNetworks/vnet-sharegate/subnets/subnet-sharegate",
-  "/subscriptions/XXXXXXXX-/virtualNetworks/vnet-sharegate/subnets/subnet-sharegate",
-]
-node_vm_id     = [
-  "/subscriptions/XXXXXXXX.Compute/virtualMachines/srv-sharegate-01",
-  "/subscriptions/XXXXXXXX.Compute/virtualMachines/srv-sharegate-02",
-]
-```
-
-## SSH Connection
-
-```bash
+```Shell
 ssh user@PublicIP
 ```
-## Module arguments
 
-The following arguments are supported:
+## Argumentos do Módulo
 
-* `name` - (Required) Specifies the name of the virtual machine. Changing this forces a new resource to be created.
-* `resource_group_name` - (Required) The name of the resource group in which to create the virtual machine.
-* `location` - (Required) Specifies the supported Azure location where the resource exists. Changing this forces a new resource to be created.
-* `vm_name` - (Required) The name of the virtual machine.
-* `vm_size` - (Required) Specifies the size of the virtual machine. Changing this forces a new resource to be created. See also Azure VM Sizes.
-* `admin_username` - (Required) The administrator username to use for the VM.
-* `admin_password` - (Required) The administrator password to use for the VM.
-* `subnet_id` - (Required) The ID of the subnet to which to attach the VM.
-* `tags` - (Optional) A mapping of tags to assign to the resource.
+Os seguintes argumentos são suportados:
 
-## Module outputs
+- `name` - (Obrigatório) Especifica o nome da máquina virtual. Alterar isso forçará a criação de um novo recurso.
+- `resource_group_name` - (Obrigatório) O nome do grupo de recursos no qual criar a máquina virtual.
+- `location` - (Obrigatório) Especifica a localização do Azure suportada onde o recurso existe. Alterar isso forçará a criação de um novo recurso.
+- `vm_name` - (Obrigatório) O nome da máquina virtual.
+- `vm_size` - (Obrigatório) Especifica o tamanho da máquina virtual. Alterar isso forçará a criação de um novo recurso. Consulte também os tamanhos de VM do Azure.
+- `admin_username` - (Obrigatório) O nome de usuário do administrador para usar na VM.
+- `admin_password` - (Obrigatório) A senha do administrador para usar na VM.
+- `subnet_id` - (Obrigatório) O ID da sub-rede à qual anexar a VM.
+- `tags` - (Opcional) Um mapeamento de tags para atribuir ao recurso.
 
-The following outputs are exported:
+## Saídas do Módulo
 
-* `vm_id` - The ID of the virtual machine.
-* `vm_name` - The name of the virtual machine.
-* `vm_size` - The size of the virtual machine.
-* `vm_os_simple` - The operating system of the virtual machine.
-* `vm_os_publisher` - The publisher of the operating system of the virtual machine.
-* `vm_os_offer` - The offer of the operating system of the virtual machine.
-* `vm_os_sku` - The SKU of the operating system of the virtual machine.
-* `vm_os_version` - The version of the operating system of the virtual machine.
-* `vm_computer_name` - The computer name of the virtual machine.
-* `vm_admin_username` - The administrator username of the virtual machine.
-* `vm_network_interface_ids` - The IDs of network interfaces associated with the virtual machine.
-* `vm_power_state` - The power state of the virtual machine.
-* `vm_provisioning_state` - The provisioning state of the virtual machine.
-* `vm_storage_image_reference_id` - The ID of the storage image reference of the virtual machine.
-* `vm_storage_os_disk_id` - The ID of the storage OS disk of the virtual machine.
-* `vm_storage_data_disk_ids` - The IDs of the storage data disks of the virtual machine.
-* `vm_os_disk_id` - The ID of the OS disk of the virtual machine.
-* `vm_data_disk_ids` - The IDs of the data disks of the virtual machine.
-* `vm_identity_ids` - The identity of the virtual machine.
-* `vm_zones` - The availability zones of the virtual machine.
-* `vm_plan_name` - The name of the virtual machine.
-* `vm_plan_product` - The product of the virtual machine.
-* `vm_plan_publisher` - The publisher of the virtual machine.
-* `vm_plan_promotion_code` - The promotion code of the virtual machine.
-* `vm_plan_version` - The version of the virtual machine.
-* `vm_license_type` - Specifies that the image or disk that is being used was licensed on-premises. This element is only used for images that contain the Windows Server operating system.
-* `vm_host_id` - Specifies the ID which uniquely identifies a Virtual Machine hosted on a dedicated physical server.
-* `vm_proximity_placement_group_id` - Specifies the ID of the proximity placement group the virtual machine is in.
+As seguintes saídas são exportadas:
 
-
-## Providers
-
-| Name | Version |
-|------|---------|
-| azurerm | >= 2.0.0 |
+- `vm_id` - O ID da máquina virtual.
+- `vm_name` - O nome da máquina virtual.
+- `vm_size` - O tamanho da máquina virtual.
+- `vm_os_simple` - O sistema operacional da máquina virtual.
+- `vm_os_publisher` - O editor do sistema operacional da máquina virtual.
+- `vm_os_offer` - A oferta do sistema operacional da máquina virtual.
+- `vm_os_sku` - O SKU do sistema operacional da máquina virtual.
+- `vm_os_version` - A versão do sistema operacional da máquina virtual.
+- `vm_computer_name` - O nome do computador da máquina virtual.
+- `vm_admin_username` - O nome de usuário do administrador da máquina virtual.
+- `vm_network_interface_ids` - Os IDs das interfaces de rede associadas à máquina virtual.
+- `vm_power_state` - O estado de energia da máquina virtual.
+- `vm_provisioning_state` - O estado de provisionamento da máquina virtual.
+- `vm_storage_image_reference_id` - O ID da referência de imagem de armazenamento da máquina virtual.
+- `vm_storage_os_disk_id` - O ID do disco OS de armazenamento da máquina virtual.
+- `vm_storage_data_disk_ids` - Os IDs dos discos de dados de armazenamento da máquina virtual.
+- `vm_os_disk` - O disco OS da máquina virtual.
 
 ## Inputs
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| admin\_password | The administrator password to use for the VM. | `string` | n/a | yes |
-| admin\_username | The administrator username to use for the VM. | `string` | n/a | yes |
-| environment | The environment name. | `string` | n/a | yes |
-| location | Specifies the supported Azure location where the resource exists. Changing this forces a new resource to be created. | `string` | n/a | yes |
-| node\_count | The number of nodes to create. | `number` | n/a | yes |
-| node\_location | The location where the nodes will be created. | `string` | n/a | yes |
-| node\_size | Specifies the size of the virtual machine. Changing this forces a new resource to be created. See also Azure VM Sizes. | `string` | n/a | yes |
-| resource\_prefix | The prefix for the resources. | `string` | n/a | yes |
-| subscription\_id | The subscription ID to use. | `string` | n/a | yes |
-| tags | A mapping of tags to assign to the resource. | `map(string)` | n/a | yes |
-| vm\_name | The name of the virtual machine. | `string` | n/a | yes |
-| vm\_size | Specifies the size of the virtual machine. Changing this forces a new resource to be created. See also Azure VM Sizes. | `string` | n/a | yes |
-| subnet\_id | The ID of the subnet to which to attach the VM. | `string` | n/a | yes |
+|Nome|Descrição|Tipo|Padrão|Obrigatório|
+|---|---|---|---|---|
+|admin_password|A senha do administrador para usar na VM.|string|n/a|sim|
+|admin_username|O nome de usuário do administrador para usar na VM.|string|n/a|sim|
+|environment|O nome do ambiente.|string|n/a|sim|
+|location|Especifica a localização do Azure suportada onde o recurso existe. Alterar isso forçará a criação de um novo recurso.|string|n/a|sim|
+|node_count|O número de nós a serem criados.|number|n/a|sim|
+|node_location|O local onde os nós serão criados.|string|n/a|sim|
+|node_size|Especifica o tamanho da máquina virtual. Alterar isso forçará a criação de um novo recurso. Consulte também os tamanhos de VM do Azure.|string|n/a|sim|
+|resource_prefix|O prefixo para os recursos.|string|n/a|sim|
+|subscription_id|O ID da assinatura a ser utilizado.|string|n/a|sim|
+|tags|Um mapeamento de tags para atribuir ao recurso.|map(string)|n/a|sim|
+|vm_name|O nome da máquina virtual.|string|n/a|sim|
+|vm_size|Especifica o tamanho da máquina virtual. Alterar isso forçará a criação de um novo recurso. Consulte também os tamanhos de VM do Azure.|string|n/a|sim|
+|subnet_id|O ID da sub-rede à qual anexar a VM.|string|n/a|sim|
 
-# Outputs
+# Saídas
 
-| Name | Description |
-|------|-------------|
-| admin\_password | The administrator password to use for the VM. |
-| admin\_username | The administrator username to use for the VM. |
-| node\_address | The public IP address of the nodes. |
-| node\_name | The name of the nodes. |
-| node\_private\_ip | The private IP address of the nodes. |
-| node\_public\_ip | The public IP address of the nodes. |
-| node\_size | The size of the nodes. |
-| node\_subnet\_id | The ID of the subnet to which to attach the VM. |
-| node\_vm\_id | The ID of the nodes. |
+|Nome|Descrição|
+|---|---|
+|admin_password|A senha do administrador para usar na VM.|
+|admin_username|O nome de usuário do administrador para usar na VM.|
+|node_address|O endereço IP público dos nós.|
+|node_name|O nome dos nós.|
+||O endereço IP privado dos nós.|
+|node_public_ip|O endereço IP público dos nós.|
+|node_size|O tamanho dos nós.|
+|node_subnet_id|O ID da sub-rede à qual anexar a VM.|
+|node_vm_id|O ID dos nós.|
+
+
+## Licença
+
+MIT
+
+
+
+## Referências
+
+- [Terraform](https://www.terraform.io/)
+- [Azure](https://azure.microsoft.com/pt-br/)
+- [Sharegate](https://www.sharegate.com/)
+- [Terraform Azure Virtual Machine](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine)
+- [Terraform Azure Virtual Machine Data Disk](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine_data_disk_attachment)
+- [Terraform Azure Virtual Machine Extension](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine_extension)
+- [Terraform Azure Virtual Machine Network Interface](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_interface)
+- [Terraform Azure Virtual Machine Network Interface Security Group Association](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_interface_security_group_association)
+- [Terraform Azure Virtual Machine Public IP](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/public_ip)
+- [Terraform Azure Virtual Machine Scale Set](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine_scale_set)
+- [Terraform Azure Virtual Machine Scale Set Extension](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine_scale_set_extension)
+- [Terraform Azure Virtual Machine Scale Set Network Interface](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine_scale_set_network_interface)
+- [Terraform Azure Virtual Machine Scale Set Public IP](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine_scale_set_public_ip)
+- [Terraform Azure Virtual Machine Scale Set Virtual Machine Extension](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine_scale_set_virtual_machine_extension)
+
+
+
+
 
 
