@@ -2,6 +2,7 @@
 *.tfstate
 *.tfstate.*
 *.tfvars
+*.lock.*
 
 # Arquivos de configuração
 terraform.tfstate

@@ -116,7 +116,7 @@ resource "azurerm_virtual_machine" "Windows" {
         managed_disk_type = "Standard_LRS"
     }
     os_profile {
-        computer_name  = "${var.resource_prefix}-${format("%02d", count.index)}"
+        computer_name  = "sharegate${format("%02d", count.index)}"
         admin_username = "${var.admin_username}"
         admin_password = "${var.admin_password}"
     }
@@ -130,6 +130,7 @@ resource "azurerm_virtual_machine" "Windows" {
 
 # Create a Virtual Machine Extension to install .msi file
 resource "azurerm_virtual_machine_extension" "install_msi" {
+  depends_on = [azurerm_virtual_machine.Windows ]
   count                 = var.node_count
   name                  = "${var.resource_prefix}-${format("%02d", count.index)}-extension"
   virtual_machine_id    = azurerm_virtual_machine.Windows[count.index].id
@@ -147,35 +148,41 @@ SETTINGS
 
 
 # Output
-output "vm_rg" {
-  value = azurerm_virtual_machine.Windows.resource_group_name
-  description = "VM Resource Group"
-}
-output "vm_location" {
-  value = azurerm_virtual_machine.Windows.location
-  description = "VM Location"
-}
-output "vm_name" {
-  value = azurerm_virtual_machine.Windows.name
-  description = "VM name"
-}
-output "vm_ip" {
-  value = azurerm_public_ip.example_public_ip.*.ip_address
-  description = "VM IP"
-}
-output "vm_username" {
-  value = azurerm_virtual_machine.Windows.os_profile_windows_config[0].admin_username
-  description = "Username"
-}
-output "vm_password" {
-  value = azurerm_virtual_machine.Windows.os_profile_windows_config[0].admin_password
-  description = "Password"
-}
-output "vm_size" {
-  value = azurerm_virtual_machine.Windows.vm_size
-  description = "VM Size"
-}
-
+#output "vm_rg" {
+#  value = azurerm_virtual_machine.Windows.resource_group_name[count.index]
+#  description = "VM Resource Group"
+#  depends_on = [azurerm_resource_group.example_rg]
+#}
+#output "vm_location" {
+#  value = azurerm_virtual_machine.Windows.location[count.index]
+#  description = "VM Location"
+#  depends_on = [azurerm_virtual_machine.Windows]
+#}
+#output "vm_name" {
+#  value = azurerm_virtual_machine.Windows.name[count.index]
+#  description = "VM name"
+#  depends_on = [azurerm_virtual_machine.Windows]
+#}
+#output "vm_ip" {
+#  value = azurerm_public_ip.example_public_ip.*.ip_address[count.index]
+#  description = "VM IP"
+#  depends_on = [azurerm_public_ip.example_public_ip]
+#}
+#output "vm_username" {
+#  value = azurerm_virtual_machine.Windows.os_profile_windows_config[0].admin_username
+#  description = "Username"
+#  depends_on = [azurerm_public_ip.example_public_ip]
+#}
+#output "vm_password" {
+#  value = azurerm_virtual_machine.Windows.os_profile_windows_config[0].admin_password
+#  description = "Password"
+#  depends_on = [azurerm_public_ip.example_public_ip]
+#}
+#output "vm_size" {
+#  value = azurerm_virtual_machine.Windows.vm_size.count.index
+#  description = "VM Size"
+#  depends_on = [azurerm_public_ip.example_public_ip]
+#}
 
 
 # Path: variables.tf
