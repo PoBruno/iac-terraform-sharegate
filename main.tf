@@ -10,44 +10,44 @@ provider "azurerm" {
 
 # Create a resource group
 resource "azurerm_resource_group" "example_rg" {
-  name     = "${var.resource_prefix}-rg"
-  location = var.node_location
+  name     = "${var.prefix}-rg"
+  location = var.location
   tags = var.tags
 }
 
 # Create a virtual network within the resource group
 resource "azurerm_virtual_network" "example_vnet" {
-  name                = "${var.resource_prefix}-vnet"
+  name                = "${var.prefix}-vnet"
   resource_group_name = azurerm_resource_group.example_rg.name
-  location            = var.node_location
-  address_space       = var.node_address_space
+  location            = var.location
+  address_space       = var.address_space
   tags = var.tags
 }
 
 # Create a subnets within the virtual network
 resource "azurerm_subnet" "example_subnet" {
-  name                 = "${var.resource_prefix}-subnet"
+  name                 = "${var.prefix}-subnet"
   resource_group_name  = azurerm_resource_group.example_rg.name
   virtual_network_name = azurerm_virtual_network.example_vnet.name
-  address_prefixes     = [var.node_address_prefix]
+  address_prefixes     = [var.address_prefix]
   }
 
 # Create Linux Public IP
 resource "azurerm_public_ip" "example_public_ip" {
-  count = var.node_count
-  name  = "${var.resource_prefix}-${format("%02d", count.index)}-PublicIP"
-  #name = "${var.resource_prefix}-PublicIP"
+  count = var.count
+  name  = "${var.prefix}-${format("%02d", count.index)}-PublicIP"
+  #name = "${var.prefix}-PublicIP"
   location            = azurerm_resource_group.example_rg.location
   resource_group_name = azurerm_resource_group.example_rg.name
-  allocation_method   = var.Environment == "Test" ? "Static" : "Dynamic"
+  allocation_method   = var.env == "Test" ? "Static" : "Dynamic"
   tags = var.tags
 }
 
 # Create Network Interface
 resource "azurerm_network_interface" "example_nic" {
-  count = var.node_count
-  #name = "${var.resource_prefix}-NIC"
-  name                = "${var.resource_prefix}-${format("%02d", count.index)}-nic"
+  count = var.count
+  #name = "${var.prefix}-NIC"
+  name                = "${var.prefix}-${format("%02d", count.index)}-nic"
   location            = azurerm_resource_group.example_rg.location
   resource_group_name = azurerm_resource_group.example_rg.name
   tags = var.tags
@@ -65,7 +65,7 @@ resource "azurerm_network_interface" "example_nic" {
 # Creating resource NSG
 resource "azurerm_network_security_group" "example_nsg" {
 
-  name                = "${var.resource_prefix}-nsg"
+  name                = "${var.prefix}-nsg"
   location            = azurerm_resource_group.example_rg.location
   resource_group_name = azurerm_resource_group.example_rg.name
 
@@ -82,7 +82,7 @@ resource "azurerm_network_security_group" "example_nsg" {
     destination_address_prefix = "*"
 
   }
-  tags = var.tags
+  tags = merge(var.tags, { env = var.env })
 }
 
 # Subnet and NSG association
@@ -91,98 +91,59 @@ resource "azurerm_subnet_network_security_group_association" "example_subnet_nsg
   network_security_group_id = azurerm_network_security_group.example_nsg.id
 }
 
-# Virtual Machine Creation — Windows Server
+
+# Definição de recurso para criação das máquinas virtuais do Windows
 resource "azurerm_virtual_machine" "Windows" {
-    count = var.node_count
-    name  = "${var.resource_prefix}-${format("%02d", count.index)}"
-    location                      = azurerm_resource_group.example_rg.location
-    resource_group_name           = azurerm_resource_group.example_rg.name
-    network_interface_ids         = [element(azurerm_network_interface.example_nic.*.id, count.index)]
-    vm_size                       = "${var.vm_size}"
-    delete_os_disk_on_termination = true
-    
-    storage_image_reference {
-        publisher = var.windows_image_reference["publisher"]
-        offer     = var.windows_image_reference["offer"]
-        sku       = var.windows_image_reference["sku"]
-        version   = var.windows_image_reference["version"]
-    }
-
-
-    storage_os_disk {
-        name              = "${var.resource_prefix}-disk-${format("%02d", count.index)}"
-        caching           = "ReadWrite"
-        create_option     = "FromImage"
-        managed_disk_type = "Standard_LRS"
-    }
-    os_profile {
-        computer_name  = "sharegate${format("%02d", count.index)}"
-        admin_username = "${var.admin_username}"
-        admin_password = "${var.admin_password}"
-    }
-    os_profile_windows_config {
-        provision_vm_agent = true
-    }
-    
-    tags = var.tags
+  count = var.count
+  name  = "${var.prefix}-${format("%02d", count.index)}"
+  location                      = azurerm_resource_group.example_rg.location
+  resource_group_name           = azurerm_resource_group.example_rg.name
+  network_interface_ids         = [element(azurerm_network_interface.example_nic.*.id, count.index)]
+  vm_size                       = "${var.vm_size}"
+  delete_os_disk_on_termination = true
   
+  # Definição da imagem da VM
+  storage_image_reference {
+      publisher = var.win_image["publisher"]
+      offer     = var.win_image["offer"]
+      sku       = var.win_image["sku"]
+      version   = var.win_image["version"]
+  }
+  
+  # Configuração do disco OS da VM
+  storage_os_disk {
+      name              = "${var.prefix}-disk-${format("%02d", count.index)}"
+      caching           = "ReadWrite"
+      create_option     = "FromImage"
+      managed_disk_type = "Standard_LRS"
+  }
+  
+  # Configuração do perfil do sistema operacional da VM
+  os_profile {
+      computer_name  = "sharegate${format("%02d", count.index)}"
+      admin_username = "${var.username}"
+      admin_password = "${var.password}"
+  }
+  
+  # Configuração adicional para o Windows
+  os_profile_windows_config {
+      provision_vm_agent = true
+  }
+
+  # Definição dos provisioners para configurar a VM e executar o playbook do Ansible
+  provisioner "remote-exec" {
+    inline = [
+      "powershell -Command \"Set-ExecutionPolicy Unrestricted -Force\"; winrm quickconfig -q; winrm set winrm/config/service @{AllowUnencrypted='true'}; winrm set winrm/config/service/auth @{Basic='true'}"
+    ]
+  }
+
+  provisioner "local-exec" {
+    command = "ansible-playbook -i ${azurerm_public_ip.example_public_ip[count.index].ip_address}, -u ${var.username} -e 'ansible_ssh_pass=${var.password}' -e 'ansible_connection=winrm' ./ansible/server_setup.yml"
+  }
+   
+  tags = var.tags
 }
 
-# Create a Virtual Machine Extension to install .msi file
-resource "azurerm_virtual_machine_extension" "install_msi" {
-  depends_on = [azurerm_virtual_machine.Windows ]
-  count                 = var.node_count
-  name                  = "${var.resource_prefix}-${format("%02d", count.index)}-extension"
-  virtual_machine_id    = azurerm_virtual_machine.Windows[count.index].id
-  publisher             = "Microsoft.Compute"
-  type                  = "CustomScriptExtension"
-  type_handler_version  = "1.10"
-
-  settings = <<SETTINGS
-    {
-        "fileUris": ["https://github.com/pobruno/iac-terraform-sharegate/blob/main/sharegate/Sharegate.Extension.2.2.0.msi"],
-        "commandToExecute": "msiexec /i Sharegate.Extension.2.2.0.msi /quiet /qn /norestart"
-    }
-SETTINGS
-}
-
-
-# Output
-#output "vm_rg" {
-#  value = azurerm_virtual_machine.Windows.resource_group_name[count.index]
-#  description = "VM Resource Group"
-#  depends_on = [azurerm_resource_group.example_rg]
-#}
-#output "vm_location" {
-#  value = azurerm_virtual_machine.Windows.location[count.index]
-#  description = "VM Location"
-#  depends_on = [azurerm_virtual_machine.Windows]
-#}
-#output "vm_name" {
-#  value = azurerm_virtual_machine.Windows.name[count.index]
-#  description = "VM name"
-#  depends_on = [azurerm_virtual_machine.Windows]
-#}
-#output "vm_ip" {
-#  value = azurerm_public_ip.example_public_ip.*.ip_address[count.index]
-#  description = "VM IP"
-#  depends_on = [azurerm_public_ip.example_public_ip]
-#}
-#output "vm_username" {
-#  value = azurerm_virtual_machine.Windows.os_profile_windows_config[0].admin_username
-#  description = "Username"
-#  depends_on = [azurerm_public_ip.example_public_ip]
-#}
-#output "vm_password" {
-#  value = azurerm_virtual_machine.Windows.os_profile_windows_config[0].admin_password
-#  description = "Password"
-#  depends_on = [azurerm_public_ip.example_public_ip]
-#}
-#output "vm_size" {
-#  value = azurerm_virtual_machine.Windows.vm_size.count.index
-#  description = "VM Size"
-#  depends_on = [azurerm_public_ip.example_public_ip]
-#}
 
 
 # Path: variables.tf

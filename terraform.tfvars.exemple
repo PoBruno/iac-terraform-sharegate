@@ -1,9 +1,24 @@
-subscription_id = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-node_location   = "Brazil South"
-resource_prefix = "srv-sharegate"
-Environment     = "Development"
-node_count      = 2
-admin_username  = "XXXXXX"
-admin_password  = "XXXXXX"
+subscription_id = "xxxxxx-xxxxx-xxxx-xxxxxx"
+location        = "Brazil South"
+prefix          = "srv-sharegate"
+env             = "Development"
+count           = 3
+username        = "azureuser"
+password        = "Password123"
 vm_size         = "Standard_D4s_v3" 
+
+tags = {
+  project     = "MigrationProject"
+  access      = "terraform"
+  environment = "development"
+  application = "sharegate"
+}
+
+win_image = {
+  publisher = "MicrosoftWindowsServer"
+  offer     = "WindowsServer"
+  sku       = "2022-datacenter"
+  version   = "latest"
+}
+
 
